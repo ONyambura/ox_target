@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ox_target - Developer Test</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" />
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    <style>
+        body {
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        .dev-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .dev-controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+        }
+        
+        .dev-controls button {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .dev-controls button:hover {
+            background: #444;
+        }
+        
+        .dev-controls button.active {
+            background: #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="dev-info">
+        <h3>ox_target Developer Mode</h3>
+        <p><strong>Controls:</strong></p>
+        <ul>
+            <li>Press 'E' to toggle targeting</li>
+            <li>Click options to test functionality</li>
+            <li>Options with arrows (→ or ←) have submenus</li>
+            <li>Click outside submenu to close it</li>
+        </ul>
+        <p><strong>Features:</strong></p>
+        <ul>
+            <li>Left/Right side positioning</li>
+            <li>Nested submenus</li>
+            <li>Smooth animations</li>
+            <li>Click outside to close</li>
+        </ul>
+    </div>
+    
+    <div class="dev-controls">
+        <h4>Test Controls</h4>
+        <button onclick="toggleSide()">Toggle Side</button>
+        <button onclick="addTestSubmenu()">Add Test Submenu</button>
+        <button onclick="clearOptions()">Clear Options</button>
+        <div style="margin-top: 10px;">
+            <strong>Current Side:</strong> <span id="currentSide">right</span>
+        </div>
+    </div>
+
+    <div id="eye">
+        <svg id="eyeSvg" xmlns="http://www.w3.org/2000/svg" height="36px" viewBox="0 0 24 24" width="36px" fill="#000000">
+            <path d="M0 0h24v24H0V0z" fill="none"/>
+            <path d="M12 4C7 4 2.73 7.11 1 11.5 2.73 15.89 7 19 12 19s9.27-3.11 11-7.5C21.27 7.11 17 4 12 4zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+        </svg>
+    </div>
+    <div id="options-wrapper"></div>
+
+    <script type="module">
+        import { createOptions, createSubMenu } from "./js/createOptions.js";
+
+        // Mock GetParentResourceName for testing
+        window.GetParentResourceName = () => 'ox_target';
+
+        const optionsWrapper = document.getElementById("options-wrapper");
+        const body = document.body;
+        const eye = document.getElementById("eyeSvg");
+        const currentSideSpan = document.getElementById("currentSide");
+
+        let currentSubmenu = null;
+        let currentSide = 'right';
+        let isVisible = false;
+
+        // Test data with various submenu configurations
+        const testData = {
+            options: {
+                __global: [
+                    {
+                        icon: 'fa-solid fa-hand',
+                        label: 'Simple Interact',
+                        hide: false
+                    },
+                    {
+                        icon: 'fa-solid fa-cog',
+                        label: 'Settings Menu',
+                        hide: false,
+                        subMenu: [
+                            {
+                                icon: 'fa-solid fa-volume-up',
+                                label: 'Audio Settings',
+                                hide: false,
+                                subMenu: [
+                                    {
+                                        icon: 'fa-solid fa-music',
+                                        label: 'Music Volume',
+                                        hide: false
+                                    },
+                                    {
+                                        icon: 'fa-solid fa-microphone',
+                                        label: 'Voice Volume',
+                                        hide: false
+                                    }
+                                ]
+                            },
+                            {
+                                icon: 'fa-solid fa-display',
+                                label: 'Display Settings',
+                                hide: false
+                            },
+                            {
+                                icon: 'fa-solid fa-gamepad',
+                                label: 'Controls',
+                                hide: false
+                            }
+                        ]
+                    },
+                    {
+                        icon: 'fa-solid fa-user',
+                        label: 'Player Actions',
+                        hide: false,
+                        subMenu: [
+                            {
+                                icon: 'fa-solid fa-id-card',
+                                label: 'Show ID',
+                                hide: false
+                            },
+                            {
+                                icon: 'fa-solid fa-handshake',
+                                label: 'Greet',
+                                hide: false
+                            }
+                        ]
+                    }
+                ],
+                globalTarget: [
+                    {
+                        icon: 'fa-solid fa-car',
+                        label: 'Vehicle Options',
+                        hide: false,
+                        subMenu: [
+                            {
+                                icon: 'fa-solid fa-key',
+                                label: 'Lock/Unlock',
+                                hide: false
+                            },
+                            {
+                                icon: 'fa-solid fa-gas-pump',
+                                label: 'Refuel',
+                                hide: false
+                            },
+                            {
+                                icon: 'fa-solid fa-wrench',
+                                label: 'Repair',
+                                hide: false
+                            }
+                        ]
+                    }
+                ]
+            },
+            zones: [
+                [
+                    {
+                        icon: 'fa-solid fa-door-open',
+                        label: 'Enter Building',
+                        hide: false
+                    },
+                    {
+                        icon: 'fa-solid fa-shopping-cart',
+                        label: 'Shop Menu',
+                        hide: false,
+                        subMenu: [
+                            {
+                                icon: 'fa-solid fa-apple-alt',
+                                label: 'Food',
+                                hide: false
+                            },
+                            {
+                                icon: 'fa-solid fa-tshirt',
+                                label: 'Clothing',
+                                hide: false
+                            }
+                        ]
+                    }
+                ]
+            ]
+        };
+
+        // Handle option clicks with submenu support
+        function handleOptionClick(event) {
+            const option = event.currentTarget;
+            
+            if (option.subMenuData) {
+                event.stopPropagation();
+                
+                // If submenu is already open for this option, close it
+                if (currentSubmenu && currentSubmenu.parentOption === option) {
+                    currentSubmenu.remove();
+                    currentSubmenu = null;
+                    return;
+                }
+                
+                // Close any existing submenu
+                if (currentSubmenu) {
+                    currentSubmenu.remove();
+                }
+                
+                // Create new submenu
+                currentSubmenu = createSubMenu(option, option.subMenuData, option.side);
+                currentSubmenu.parentOption = option;
+            } else {
+                console.log('Option clicked:', option.querySelector('.option-label').textContent);
+            }
+        }
+
+        // Add event delegation for option clicks
+        optionsWrapper.addEventListener('click', handleOptionClick);
+
+        function showTarget() {
+            if (isVisible) return;
+            
+            isVisible = true;
+            body.style.visibility = 'visible';
+            eye.classList.add("eye-hover");
+            optionsWrapper.innerHTML = "";
+            currentSubmenu = null;
+            
+            optionsWrapper.className = `side-${currentSide}`;
+            currentSideSpan.textContent = currentSide;
+            
+            // Create test options
+            for (const type in testData.options) {
+                testData.options[type].forEach((data, id) => {
+                    createOptions(type, data, id + 1, null, currentSide);
+                });
+            }
+            
+            if (testData.zones) {
+                for (let i = 0; i < testData.zones.length; i++) {
+                    testData.zones[i].forEach((data, id) => {
+                        createOptions("zones", data, id + 1, i + 1, currentSide);
+                    });
+                }
+            }
+        }
+
+        function hideTarget() {
+            if (!isVisible) return;
+            
+            isVisible = false;
+            body.style.visibility = 'hidden';
+            eye.classList.remove("eye-hover");
+            if (currentSubmenu) {
+                currentSubmenu.remove();
+                currentSubmenu = null;
+            }
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'e' || e.key === 'E') {
+                if (isVisible) {
+                    hideTarget();
+                } else {
+                    showTarget();
+                }
+            }
+        });
+
+        // Test control functions
+        window.toggleSide = function() {
+            currentSide = currentSide === 'right' ? 'left' : 'right';
+            if (isVisible) {
+                showTarget();
+            }
+        };
+
+        window.addTestSubmenu = function() {
+            // Add a dynamic submenu option for testing
+            const dynamicOption = {
+                icon: 'fa-solid fa-star',
+                label: 'Dynamic Menu',
+                hide: false,
+                subMenu: [
+                    {
+                        icon: 'fa-solid fa-rocket',
+                        label: 'Launch',
+                        hide: false
+                    },
+                    {
+                        icon: 'fa-solid fa-pause',
+                        label: 'Pause',
+                        hide: false
+                    }
+                ]
+            };
+            
+            testData.options.__global.push(dynamicOption);
+            
+            if (isVisible) {
+                showTarget();
+            }
+        };
+
+        window.clearOptions = function() {
+            hideTarget();
+            testData.options.__global = [];
+            testData.options.globalTarget = [];
+            testData.zones = [];
+        };
+
+        // Initialize
+        body.style.visibility = 'hidden';
+    </script>
+</body>
+</html>

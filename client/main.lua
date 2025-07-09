@@ -316,6 +316,7 @@ local function startTargeting()
                     event = 'setTarget',
                     options = options,
                     zones = zones,
+                    side = 'right' -- Default side, can be made configurable
                 }, { sort_keys = true }))
             end
 

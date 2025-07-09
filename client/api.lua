@@ -1,5 +1,7 @@
 ---@class OxTargetOption
 ---@field resource? string
+---@field side? 'left' | 'right'
+---@field subMenu? OxTargetOption[]
 
 local utils = require 'client.utils'
 
@@ -145,6 +147,11 @@ local function addTarget(target, options, resource)
     for i = 1, #options do
         local option = options[i]
         option.resource = resource
+        
+        -- Set default side if not specified
+        if not option.side then
+            option.side = 'right'
+        end
 
         if option.name then
             checkNames[#checkNames + 1] = option.name
@@ -492,12 +499,14 @@ local options = setmetatable({
 ---@param entity? number
 ---@param _type? number
 ---@param model? number
+---@param side? 'left' | 'right'
 function api.getTargetOptions(entity, _type, model)
     if not entity then return options end
 
     if IsPedAPlayer(entity) then
         return {
             global = players,
+            side = 'right'
         }
     end
 
@@ -508,6 +517,7 @@ function api.getTargetOptions(entity, _type, model)
         model = models[model],
         entity = netId and entities[netId] or nil,
         localEntity = localEntities[entity],
+        side = 'right'
     }
 end
 

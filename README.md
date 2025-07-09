@@ -25,6 +25,9 @@ https://github.com/communityox/ox_target/releases/latest/download/ox_target.zip
 - Improved entity and world collision than its predecessor.
 - Improved error handling when running external code.
 - Menus for nested target options.
+- Left/Right side menu positioning with `side` property.
+- Submenu support with `subMenu` property for nested options.
 - Partial compatibility for qtarget (the thing qb-target is based on, I made the original idiots).
 - Registering options no longer overrides existing options.
 - Groups and items checking for supported frameworks.
+- Developer mode for web testing (`web/test.html`).
