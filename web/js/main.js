@@ -1,4 +1,4 @@
-import { createOptions, createSubMenu } from "./createOptions.js";
+import { createOptions, closeCurrentSubmenu } from "./createOptions.js";
 
 const optionsWrapper = document.getElementById("options-wrapper");
 const body = document.body;
@@ -7,8 +7,22 @@ const eye = document.getElementById("eyeSvg");
 // Developer mode flag - set to true for web testing, false for production
 const DEVELOPER_MODE = typeof GetParentResourceName === 'undefined';
 
-let currentSubmenu = null;
-let currentSide = 'right'; // Default side
+// Create left and right containers
+function createSideContainers() {
+  // Clear existing containers
+  optionsWrapper.innerHTML = '';
+  
+  const leftContainer = document.createElement('div');
+  leftContainer.id = 'options-left';
+  leftContainer.className = 'options-side-container side-left';
+  
+  const rightContainer = document.createElement('div');
+  rightContainer.id = 'options-right';
+  rightContainer.className = 'options-side-container side-right';
+  
+  optionsWrapper.appendChild(leftContainer);
+  optionsWrapper.appendChild(rightContainer);
+}
 
 // Test data for developer mode
 const testData = {
@@ -17,21 +31,53 @@ const testData = {
       {
         icon: 'fa-solid fa-hand',
         label: 'Interact',
-        hide: false
+        hide: false,
+        side: 'right'
       },
       {
         icon: 'fa-solid fa-cog',
         label: 'Settings',
         hide: false,
+        side: 'left',
         subMenu: [
           {
             icon: 'fa-solid fa-volume-up',
             label: 'Audio Settings',
-            hide: false
+            hide: false,
+            subMenu: [
+              {
+                icon: 'fa-solid fa-music',
+                label: 'Music Volume',
+                hide: false
+              },
+              {
+                icon: 'fa-solid fa-microphone',
+                label: 'Voice Volume',
+                hide: false
+              }
+            ]
           },
           {
             icon: 'fa-solid fa-display',
             label: 'Display Settings',
+            hide: false
+          }
+        ]
+      },
+      {
+        icon: 'fa-solid fa-user',
+        label: 'Player Actions',
+        hide: false,
+        side: 'right',
+        subMenu: [
+          {
+            icon: 'fa-solid fa-id-card',
+            label: 'Show ID',
+            hide: false
+          },
+          {
+            icon: 'fa-solid fa-handshake',
+            label: 'Greet',
             hide: false
           }
         ]
@@ -42,6 +88,7 @@ const testData = {
         icon: 'fa-solid fa-car',
         label: 'Vehicle Options',
         hide: false,
+        side: 'left',
         subMenu: [
           {
             icon: 'fa-solid fa-key',
@@ -54,6 +101,12 @@ const testData = {
             hide: false
           }
         ]
+      },
+      {
+        icon: 'fa-solid fa-wrench',
+        label: 'Repair Vehicle',
+        hide: false,
+        side: 'right'
       }
     ]
   },
@@ -62,43 +115,34 @@ const testData = {
       {
         icon: 'fa-solid fa-door-open',
         label: 'Enter Building',
-        hide: false
+        hide: false,
+        side: 'right'
+      },
+      {
+        icon: 'fa-solid fa-shopping-cart',
+        label: 'Shop Menu',
+        hide: false,
+        side: 'left',
+        subMenu: [
+          {
+            icon: 'fa-solid fa-apple-alt',
+            label: 'Food',
+            hide: false
+          },
+          {
+            icon: 'fa-solid fa-tshirt',
+            label: 'Clothing',
+            hide: false
+          }
+        ]
       }
     ]
   ]
 };
 
-// Handle option clicks with submenu support
-function handleOptionClick(event) {
-  const option = event.currentTarget;
-  
-  if (option.subMenuData) {
-    event.stopPropagation();
-    
-    // If submenu is already open for this option, close it
-    if (currentSubmenu && currentSubmenu.parentOption === option) {
-      currentSubmenu.remove();
-      currentSubmenu = null;
-      return;
-    }
-    
-    // Close any existing submenu
-    if (currentSubmenu) {
-      currentSubmenu.remove();
-    }
-    
-    // Create new submenu
-    currentSubmenu = createSubMenu(option, option.subMenuData, option.side);
-    currentSubmenu.parentOption = option;
-  }
-}
-
-// Add event delegation for option clicks
-optionsWrapper.addEventListener('click', handleOptionClick);
-
 window.addEventListener("message", (event) => {
-  optionsWrapper.innerHTML = "";
-  currentSubmenu = null;
+  createSideContainers();
+  closeCurrentSubmenu();
 
   switch (event.data.event) {
     case "visible": {
@@ -114,15 +158,12 @@ window.addEventListener("message", (event) => {
 
     case "setTarget": {
       eye.classList.add("eye-hover");
-      
-      // Determine side from data or use default
-      currentSide = event.data.side || 'right';
-      optionsWrapper.className = `side-${currentSide}`;
 
       if (event.data.options) {
         for (const type in event.data.options) {
           event.data.options[type].forEach((data, id) => {
-            createOptions(type, data, id + 1, null, currentSide);
+            const side = data.side || 'right'; // Default to right if no side specified
+            createOptions(type, data, id + 1, null, side);
           });
         }
       }
@@ -130,7 +171,8 @@ window.addEventListener("message", (event) => {
       if (event.data.zones) {
         for (let i = 0; i < event.data.zones.length; i++) {
           event.data.zones[i].forEach((data, id) => {
-            createOptions("zones", data, id + 1, i + 1, currentSide);
+            const side = data.side || 'right'; // Default to right if no side specified
+            createOptions("zones", data, id + 1, i + 1, side);
           });
         }
       }
@@ -150,28 +192,27 @@ if (DEVELOPER_MODE) {
         // Hide
         body.style.visibility = 'hidden';
         eye.classList.remove("eye-hover");
+        closeCurrentSubmenu();
       } else {
         // Show with test data
         body.style.visibility = 'visible';
         eye.classList.add("eye-hover");
-        optionsWrapper.innerHTML = "";
-        currentSubmenu = null;
-        
-        // Test both sides
-        currentSide = Math.random() > 0.5 ? 'left' : 'right';
-        optionsWrapper.className = `side-${currentSide}`;
+        createSideContainers();
+        closeCurrentSubmenu();
         
         // Create test options
         for (const type in testData.options) {
           testData.options[type].forEach((data, id) => {
-            createOptions(type, data, id + 1, null, currentSide);
+            const side = data.side || 'right';
+            createOptions(type, data, id + 1, null, side);
           });
         }
         
         if (testData.zones) {
           for (let i = 0; i < testData.zones.length; i++) {
             testData.zones[i].forEach((data, id) => {
-              createOptions("zones", data, id + 1, i + 1, currentSide);
+              const side = data.side || 'right';
+              createOptions("zones", data, id + 1, i + 1, side);
             });
           }
         }
@@ -185,8 +226,10 @@ if (DEVELOPER_MODE) {
     <div style="position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-family: Arial; font-size: 12px; z-index: 1000;">
       <strong>Developer Mode</strong><br>
       Press 'E' to toggle targeting<br>
-      Click options to test functionality<br>
-      Options with arrows have submenus
+      <strong>Left side:</strong> Settings, Vehicle Options, Shop Menu<br>
+      <strong>Right side:</strong> Interact, Player Actions, Repair, Enter Building<br>
+      Click options with arrows to open submenus<br>
+      Click outside submenu to close it
     </div>
   `;
   document.body.appendChild(instructions);

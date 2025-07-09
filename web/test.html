@@ -50,6 +50,29 @@
         .dev-controls button.active {
             background: #0066cc;
         }
+        
+        .side-demo {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .side-demo .left-side {
+            color: #ff6b6b;
+            display: inline-block;
+            margin-right: 20px;
+        }
+        
+        .side-demo .right-side {
+            color: #4ecdc4;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -64,21 +87,24 @@
         </ul>
         <p><strong>Features:</strong></p>
         <ul>
-            <li>Left/Right side positioning</li>
-            <li>Nested submenus</li>
-            <li>Smooth animations</li>
-            <li>Click outside to close</li>
+            <li><span style="color: #ff6b6b;">Left side</span> and <span style="color: #4ecdc4;">right side</span> positioning</li>
+            <li>Nested submenus with proper positioning</li>
+            <li>Smooth animations and transitions</li>
+            <li>Click outside to close submenus</li>
         </ul>
     </div>
     
     <div class="dev-controls">
         <h4>Test Controls</h4>
-        <button onclick="toggleSide()">Toggle Side</button>
-        <button onclick="addTestSubmenu()">Add Test Submenu</button>
+        <button onclick="addLeftOption()">Add Left Option</button>
+        <button onclick="addRightOption()">Add Right Option</button>
         <button onclick="clearOptions()">Clear Options</button>
-        <div style="margin-top: 10px;">
-            <strong>Current Side:</strong> <span id="currentSide">right</span>
-        </div>
+        <button onclick="toggleComplexMenu()">Toggle Complex Menu</button>
+    </div>
+    
+    <div class="side-demo">
+        <div class="left-side">← Left Side: Settings, Vehicle, Shop</div>
+        <div class="right-side">Right Side: Interact, Player, Repair, Enter →</div>
     </div>
 
     <div id="eye">
@@ -90,7 +116,7 @@
     <div id="options-wrapper"></div>
 
     <script type="module">
-        import { createOptions, createSubMenu } from "./js/createOptions.js";
+        import { createOptions, closeCurrentSubmenu } from "./js/createOptions.js";
 
         // Mock GetParentResourceName for testing
         window.GetParentResourceName = () => 'ox_target';
@@ -98,25 +124,35 @@
         const optionsWrapper = document.getElementById("options-wrapper");
         const body = document.body;
         const eye = document.getElementById("eyeSvg");
-        const currentSideSpan = document.getElementById("currentSide");
 
-        let currentSubmenu = null;
-        let currentSide = 'right';
         let isVisible = false;
 
-        // Test data with various submenu configurations
+        // Create left and right containers
+        function createSideContainers() {
+            optionsWrapper.innerHTML = '';
+            
+            const leftContainer = document.createElement('div');
+            leftContainer.id = 'options-left';
+            leftContainer.className = 'options-side-container side-left';
+            
+            const rightContainer = document.createElement('div');
+            rightContainer.id = 'options-right';
+            rightContainer.className = 'options-side-container side-right';
+            
+            optionsWrapper.appendChild(leftContainer);
+            optionsWrapper.appendChild(rightContainer);
+        }
+
+        // Test data with clear left/right separation
         const testData = {
             options: {
                 __global: [
-                    {
-                        icon: 'fa-solid fa-hand',
-                        label: 'Simple Interact',
-                        hide: false
-                    },
+                    // LEFT SIDE OPTIONS
                     {
                         icon: 'fa-solid fa-cog',
-                        label: 'Settings Menu',
+                        label: 'Settings',
                         hide: false,
+                        side: 'left',
                         subMenu: [
                             {
                                 icon: 'fa-solid fa-volume-up',
@@ -147,10 +183,18 @@
                             }
                         ]
                     },
+                    // RIGHT SIDE OPTIONS
+                    {
+                        icon: 'fa-solid fa-hand',
+                        label: 'Interact',
+                        hide: false,
+                        side: 'right'
+                    },
                     {
                         icon: 'fa-solid fa-user',
                         label: 'Player Actions',
                         hide: false,
+                        side: 'right',
                         subMenu: [
                             {
                                 icon: 'fa-solid fa-id-card',
@@ -161,15 +205,22 @@
                                 icon: 'fa-solid fa-handshake',
                                 label: 'Greet',
                                 hide: false
+                            },
+                            {
+                                icon: 'fa-solid fa-wave-square',
+                                label: 'Wave',
+                                hide: false
                             }
                         ]
                     }
                 ],
                 globalTarget: [
+                    // LEFT SIDE
                     {
                         icon: 'fa-solid fa-car',
                         label: 'Vehicle Options',
                         hide: false,
+                        side: 'left',
                         subMenu: [
                             {
                                 icon: 'fa-solid fa-key',
@@ -182,30 +233,58 @@
                                 hide: false
                             },
                             {
-                                icon: 'fa-solid fa-wrench',
-                                label: 'Repair',
-                                hide: false
+                                icon: 'fa-solid fa-car-battery',
+                                label: 'Engine',
+                                hide: false,
+                                subMenu: [
+                                    {
+                                        icon: 'fa-solid fa-play',
+                                        label: 'Start Engine',
+                                        hide: false
+                                    },
+                                    {
+                                        icon: 'fa-solid fa-stop',
+                                        label: 'Stop Engine',
+                                        hide: false
+                                    }
+                                ]
                             }
                         ]
+                    },
+                    // RIGHT SIDE
+                    {
+                        icon: 'fa-solid fa-wrench',
+                        label: 'Repair Vehicle',
+                        hide: false,
+                        side: 'right'
                     }
                 ]
             },
             zones: [
                 [
-                    {
-                        icon: 'fa-solid fa-door-open',
-                        label: 'Enter Building',
-                        hide: false
-                    },
+                    // LEFT SIDE
                     {
                         icon: 'fa-solid fa-shopping-cart',
                         label: 'Shop Menu',
                         hide: false,
+                        side: 'left',
                         subMenu: [
                             {
                                 icon: 'fa-solid fa-apple-alt',
                                 label: 'Food',
-                                hide: false
+                                hide: false,
+                                subMenu: [
+                                    {
+                                        icon: 'fa-solid fa-hamburger',
+                                        label: 'Fast Food',
+                                        hide: false
+                                    },
+                                    {
+                                        icon: 'fa-solid fa-carrot',
+                                        label: 'Healthy Food',
+                                        hide: false
+                                    }
+                                ]
                             },
                             {
                                 icon: 'fa-solid fa-tshirt',
@@ -213,40 +292,17 @@
                                 hide: false
                             }
                         ]
+                    },
+                    // RIGHT SIDE
+                    {
+                        icon: 'fa-solid fa-door-open',
+                        label: 'Enter Building',
+                        hide: false,
+                        side: 'right'
                     }
                 ]
             ]
         };
-
-        // Handle option clicks with submenu support
-        function handleOptionClick(event) {
-            const option = event.currentTarget;
-            
-            if (option.subMenuData) {
-                event.stopPropagation();
-                
-                // If submenu is already open for this option, close it
-                if (currentSubmenu && currentSubmenu.parentOption === option) {
-                    currentSubmenu.remove();
-                    currentSubmenu = null;
-                    return;
-                }
-                
-                // Close any existing submenu
-                if (currentSubmenu) {
-                    currentSubmenu.remove();
-                }
-                
-                // Create new submenu
-                currentSubmenu = createSubMenu(option, option.subMenuData, option.side);
-                currentSubmenu.parentOption = option;
-            } else {
-                console.log('Option clicked:', option.querySelector('.option-label').textContent);
-            }
-        }
-
-        // Add event delegation for option clicks
-        optionsWrapper.addEventListener('click', handleOptionClick);
 
         function showTarget() {
             if (isVisible) return;
@@ -254,23 +310,22 @@
             isVisible = true;
             body.style.visibility = 'visible';
             eye.classList.add("eye-hover");
-            optionsWrapper.innerHTML = "";
-            currentSubmenu = null;
-            
-            optionsWrapper.className = `side-${currentSide}`;
-            currentSideSpan.textContent = currentSide;
+            createSideContainers();
+            closeCurrentSubmenu();
             
             // Create test options
             for (const type in testData.options) {
                 testData.options[type].forEach((data, id) => {
-                    createOptions(type, data, id + 1, null, currentSide);
+                    const side = data.side || 'right';
+                    createOptions(type, data, id + 1, null, side);
                 });
             }
             
             if (testData.zones) {
                 for (let i = 0; i < testData.zones.length; i++) {
                     testData.zones[i].forEach((data, id) => {
-                        createOptions("zones", data, id + 1, i + 1, currentSide);
+                        const side = data.side || 'right';
+                        createOptions("zones", data, id + 1, i + 1, side);
                     });
                 }
             }
@@ -282,10 +337,7 @@
             isVisible = false;
             body.style.visibility = 'hidden';
             eye.classList.remove("eye-hover");
-            if (currentSubmenu) {
-                currentSubmenu.remove();
-                currentSubmenu = null;
-            }
+            closeCurrentSubmenu();
         }
 
         // Keyboard controls
@@ -300,34 +352,37 @@
         });
 
         // Test control functions
-        window.toggleSide = function() {
-            currentSide = currentSide === 'right' ? 'left' : 'right';
-            if (isVisible) {
-                showTarget();
-            }
-        };
-
-        window.addTestSubmenu = function() {
-            // Add a dynamic submenu option for testing
-            const dynamicOption = {
+        window.addLeftOption = function() {
+            const newOption = {
                 icon: 'fa-solid fa-star',
-                label: 'Dynamic Menu',
+                label: 'New Left Option',
                 hide: false,
+                side: 'left',
                 subMenu: [
                     {
                         icon: 'fa-solid fa-rocket',
                         label: 'Launch',
                         hide: false
-                    },
-                    {
-                        icon: 'fa-solid fa-pause',
-                        label: 'Pause',
-                        hide: false
                     }
                 ]
             };
             
-            testData.options.__global.push(dynamicOption);
+            testData.options.__global.push(newOption);
+            
+            if (isVisible) {
+                showTarget();
+            }
+        };
+
+        window.addRightOption = function() {
+            const newOption = {
+                icon: 'fa-solid fa-heart',
+                label: 'New Right Option',
+                hide: false,
+                side: 'right'
+            };
+            
+            testData.options.__global.push(newOption);
             
             if (isVisible) {
                 showTarget();
@@ -339,6 +394,54 @@
             testData.options.__global = [];
             testData.options.globalTarget = [];
             testData.zones = [];
+        };
+
+        let complexMenuEnabled = false;
+        window.toggleComplexMenu = function() {
+            complexMenuEnabled = !complexMenuEnabled;
+            
+            if (complexMenuEnabled) {
+                // Add complex nested menu
+                testData.options.__global.push({
+                    icon: 'fa-solid fa-layer-group',
+                    label: 'Complex Menu',
+                    hide: false,
+                    side: 'left',
+                    subMenu: [
+                        {
+                            icon: 'fa-solid fa-folder',
+                            label: 'Level 1A',
+                            hide: false,
+                            subMenu: [
+                                {
+                                    icon: 'fa-solid fa-file',
+                                    label: 'Level 2A',
+                                    hide: false
+                                },
+                                {
+                                    icon: 'fa-solid fa-file',
+                                    label: 'Level 2B',
+                                    hide: false
+                                }
+                            ]
+                        },
+                        {
+                            icon: 'fa-solid fa-folder',
+                            label: 'Level 1B',
+                            hide: false
+                        }
+                    ]
+                });
+            } else {
+                // Remove complex menu
+                testData.options.__global = testData.options.__global.filter(
+                    option => option.label !== 'Complex Menu'
+                );
+            }
+            
+            if (isVisible) {
+                showTarget();
+            }
         };
 
         // Initialize

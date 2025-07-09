@@ -1,32 +1,70 @@
 import { fetchNui } from "./fetchNui.js";
 
 const optionsWrapper = document.getElementById("options-wrapper");
+let currentSubmenu = null;
 
-function onClick() {
-  // when nuifocus is disabled after a click, the hover event is never released
-  this.style.pointerEvents = "none";
-
-  fetchNui("select", [this.targetType, this.targetId, this.zoneId]);
-  // is there a better way to handle this? probably
-  setTimeout(() => (this.style.pointerEvents = "auto"), 100);
+function onClick(event) {
+  const option = event.currentTarget;
+  
+  // Handle submenu toggle
+  if (option.subMenuData && option.subMenuData.length > 0) {
+    event.stopPropagation();
+    
+    // If submenu is already open for this option, close it
+    if (currentSubmenu && currentSubmenu.parentOption === option) {
+      currentSubmenu.remove();
+      currentSubmenu = null;
+      return;
+    }
+    
+    // Close any existing submenu
+    if (currentSubmenu) {
+      currentSubmenu.remove();
+      currentSubmenu = null;
+    }
+    
+    // Create new submenu
+    currentSubmenu = createSubMenu(option, option.subMenuData, option.side);
+    currentSubmenu.parentOption = option;
+    return;
+  }
+  
+  // Handle regular option click
+  option.style.pointerEvents = "none";
+  
+  // Only call fetchNui if we're in FiveM environment
+  if (typeof GetParentResourceName !== 'undefined') {
+    fetchNui("select", [option.targetType, option.targetId, option.zoneId]);
+  } else {
+    console.log('Option selected:', option.querySelector('.option-label').textContent);
+  }
+  
+  setTimeout(() => (option.style.pointerEvents = "auto"), 100);
 }
 
 export function createOptions(type, data, id, zoneId, side = 'right', isSubMenu = false, parentElement = null) {
-  if (data.hide) return;
+  if (data.hide) return null;
 
   const option = document.createElement("div");
   const iconElement = `<i class="fa-fw ${data.icon} option-icon" ${
     data.iconColor ? `style = color:${data.iconColor} !important` : null
   }"></i>`;
 
-  option.innerHTML = `${iconElement}<p class="option-label">${data.label}</p>`;
+  const labelElement = `<p class="option-label">${data.label}</p>`;
   
   // Add submenu indicator if this option has a submenu
-  if (data.subMenu) {
-    const submenuIndicator = side === 'left' ? 
+  let submenuIndicator = '';
+  if (data.subMenu && data.subMenu.length > 0) {
+    submenuIndicator = side === 'left' ? 
       '<i class="fa-solid fa-chevron-left submenu-indicator"></i>' : 
       '<i class="fa-solid fa-chevron-right submenu-indicator"></i>';
-    option.innerHTML += submenuIndicator;
+  }
+
+  // Arrange elements based on side
+  if (side === 'left') {
+    option.innerHTML = submenuIndicator + labelElement + iconElement;
+  } else {
+    option.innerHTML = iconElement + labelElement + submenuIndicator;
   }
 
   option.className = `option-container ${isSubMenu ? 'submenu-option' : ''} side-${side}`;
@@ -42,7 +80,16 @@ export function createOptions(type, data, id, zoneId, side = 'right', isSubMenu 
   if (parentElement) {
     parentElement.appendChild(option);
   } else {
-    optionsWrapper.appendChild(option);
+    // Determine which container to append to based on side
+    const container = side === 'left' ? 
+      document.getElementById('options-left') : 
+      document.getElementById('options-right');
+    
+    if (container) {
+      container.appendChild(option);
+    } else {
+      optionsWrapper.appendChild(option);
+    }
   }
 
   return option;
@@ -50,9 +97,9 @@ export function createOptions(type, data, id, zoneId, side = 'right', isSubMenu 
 
 export function createSubMenu(parentOption, subMenuData, side) {
   // Remove existing submenu if any
-  const existingSubmenu = document.querySelector('.submenu-container');
-  if (existingSubmenu) {
-    existingSubmenu.remove();
+  if (currentSubmenu) {
+    currentSubmenu.remove();
+    currentSubmenu = null;
   }
 
   const submenuContainer = document.createElement("div");
@@ -63,24 +110,33 @@ export function createSubMenu(parentOption, subMenuData, side) {
   const wrapperRect = optionsWrapper.getBoundingClientRect();
   
   if (side === 'left') {
-    submenuContainer.style.right = `${optionsWrapper.offsetWidth}px`;
+    submenuContainer.style.right = `160px`; // Width of option + margin
   } else {
-    submenuContainer.style.left = `${optionsWrapper.offsetWidth}px`;
+    submenuContainer.style.left = `160px`; // Width of option + margin
   }
   
   submenuContainer.style.top = `${parentRect.top - wrapperRect.top}px`;
 
   // Create submenu options
   subMenuData.forEach((data, index) => {
-    createOptions('submenu', data, index + 1, null, side, true, submenuContainer);
+    if (!data.hide) {
+      createOptions('submenu', data, index + 1, null, side, true, submenuContainer);
+    }
   });
 
-  optionsWrapper.appendChild(submenuContainer);
+  // Append to the same container as parent
+  const parentContainer = parentOption.closest('#options-left, #options-right, #options-wrapper');
+  if (parentContainer) {
+    parentContainer.appendChild(submenuContainer);
+  } else {
+    optionsWrapper.appendChild(submenuContainer);
+  }
   
   // Add click outside to close submenu
   const closeSubmenu = (e) => {
     if (!submenuContainer.contains(e.target) && !parentOption.contains(e.target)) {
       submenuContainer.remove();
+      currentSubmenu = null;
       document.removeEventListener('click', closeSubmenu);
     }
   };
@@ -90,4 +146,12 @@ export function createSubMenu(parentOption, subMenuData, side) {
   }, 100);
 
   return submenuContainer;
+}
+
+// Export function to close current submenu
+export function closeCurrentSubmenu() {
+  if (currentSubmenu) {
+    currentSubmenu.remove();
+    currentSubmenu = null;
+  }
 }
