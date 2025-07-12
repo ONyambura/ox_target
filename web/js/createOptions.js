@@ -34,7 +34,7 @@ function onClick(event) {
   
   // Only call fetchNui if we're in FiveM environment
   if (typeof GetParentResourceName !== 'undefined') {
-    fetchNui("select", [option.targetType, option.targetId, option.zoneId]);
+    fetchNui("select", [option.targetType, option.targetId, option.zoneId, option.subMenuData.subMenuId]);
   } else {
     console.log('Option selected:', option.querySelector('.option-label').textContent);
   }
@@ -73,7 +73,9 @@ export function createOptions(type, data, id, zoneId, side = 'right', isSubMenu 
   option.zoneId = zoneId;
   option.side = side;
   option.isSubMenu = isSubMenu;
-  option.subMenuData = data.subMenu;
+  option.subMenuData = data.subMenu ?? data;
+
+    // console.log(JSON.stringify(option.subMenuData, null, 2));
 
   option.addEventListener("click", onClick);
   
@@ -101,6 +103,8 @@ export function createSubMenu(parentOption, subMenuData, side) {
     currentSubmenu.remove();
     currentSubmenu = null;
   }
+  
+  // console.log(JSON.stringify(parentOption, null, 2));
 
   const submenuContainer = document.createElement("div");
   submenuContainer.className = `submenu-container side-${side}`;
@@ -120,7 +124,10 @@ export function createSubMenu(parentOption, subMenuData, side) {
   // Create submenu options
   subMenuData.forEach((data, index) => {
     if (!data.hide) {
-      createOptions('submenu', data, index + 1, null, side, true, submenuContainer);
+  
+      data.subMenuId = index + 1;
+      data.targetId = parentOption.targetId;
+      createOptions('submenu', data, parentOption.targetId, parentOption.zoneId, side, true, submenuContainer);
     }
   });
 

@@ -300,7 +300,7 @@ local function startTargeting()
                 end
             elseif menuChanged or hasTarget ~= 1 and hidden ~= totalOptions then
                 hasTarget = options.size
-
+                
                 if currentMenu and options.__global[1]?.name ~= 'builtin:goback' then
                     table.insert(options.__global, 1,
                         {
@@ -404,7 +404,9 @@ end
 
 RegisterNUICallback('select', function(data, cb)
     cb(1)
-
+    
+    local subMenu = data[4]
+    
     local zone = data[3] and nearbyZones[data[3]]
 
     ---@type OxTargetOption?
@@ -434,6 +436,11 @@ RegisterNUICallback('select', function(data, cb)
         end
 
         currentTarget.zone = zone?.id
+        
+        if subMenu then
+            option = option.subMenu[subMenu]
+            lib.print.info(option)
+        end
 
         if option.onSelect then
             option.onSelect(option.qtarget and currentTarget.entity or getResponse(option))
